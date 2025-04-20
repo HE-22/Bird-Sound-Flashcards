@@ -1,5 +1,5 @@
 import React, { RefObject } from 'react';
-import { CheckSquare, Square, Star, Bird, ExternalLink, RefreshCw, CheckCircle, Play, Pause } from 'lucide-react';
+import { CheckSquare, Square, Star, ExternalLink, RefreshCw, Play, Pause } from 'lucide-react';
 import BirdImage from './BirdImage';
 
 /**

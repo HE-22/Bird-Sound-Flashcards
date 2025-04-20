@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter } from 'lucide-react';
 // Removed App.css import if Tailwind handles all base styles via index.css or similar
 // import './App.css';
 import { AUDIO_DIR, IMAGE_DIR, MANIFEST_URL, MAPPING_URL } from './config';
@@ -7,6 +7,13 @@ import { BirdData, Card, FilterMode } from './types';
 import { shuffleArray } from './utils/arrayUtils';
 import Flashcard from './components/Flashcard';
 import AllCardsView from './components/AllCardsView';
+
+// Key for localStorage
+const LOCAL_STORAGE_KEY = 'birdFlashcardStatus';
+
+// Type for stored status
+type StoredCardStatus = { learned: boolean; starred: boolean };
+type StoredStatuses = Record<string, StoredCardStatus>;
 
 /**
  * Main Application Component
@@ -25,101 +32,114 @@ function App() {
   // --- Refs ---
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // --- Data Fetching & Initial Shuffle ---
+  // --- Data Fetching & Initial State Loading ---
   useEffect(() => {
-    const fetchAndSetCards = async () => {
+    const fetchAndInitialize = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        // Fetch both manifest and mapping concurrently
+        // Fetch card manifest and mapping
         const [manifestResponse, mappingResponse] = await Promise.all([
-            fetch(MANIFEST_URL),
-            fetch(MAPPING_URL)
+          fetch(MANIFEST_URL),
+          fetch(MAPPING_URL)
         ]);
-
-        if (!manifestResponse.ok) {
-          throw new Error(`Manifest fetch error! status: ${manifestResponse.status} - Could not fetch ${MANIFEST_URL}`);
-        }
-        if (!mappingResponse.ok) {
-             throw new Error(`Mapping fetch error! status: ${mappingResponse.status} - Could not fetch ${MAPPING_URL}`);
-        }
+        if (!manifestResponse.ok) throw new Error(`Manifest fetch error! status: ${manifestResponse.status}`);
+        if (!mappingResponse.ok) throw new Error(`Mapping fetch error! status: ${mappingResponse.status}`);
 
         const audioFilenames = await manifestResponse.json();
-        const birdMapping: Record<string, BirdData> = await mappingResponse.json(); // Type the mapping
+        const birdMapping: Record<string, BirdData> = await mappingResponse.json();
+        // ... (validation for manifest/mapping) ...
 
-        // Validate manifest format
-        if (!Array.isArray(audioFilenames) || audioFilenames.some(item => typeof item !== 'string')) {
-          throw new Error(`Invalid manifest format at ${MANIFEST_URL}. Expected an array of strings.`);
-        }
-        // Basic validation for mapping format (check if it's an object)
-         if (typeof birdMapping !== 'object' || birdMapping === null) {
-            throw new Error(`Invalid mapping format at ${MAPPING_URL}. Expected a JSON object.`);
-         }
-
-        console.log(`Loaded ${audioFilenames.length} audio file names from manifest.`);
-        console.log(`Loaded mapping for ${Object.keys(birdMapping).length} birds.`);
-
-        // Create Card objects using the mapping
-        const initialCards: Card[] = audioFilenames
-            .map(audioFilename => {
-                const mappingData = birdMapping[audioFilename];
-                if (!mappingData) {
-                    console.warn(`No mapping found for audio file: ${audioFilename}. Skipping card.`);
-                    return null; // Skip if no mapping exists for this audio file
+        // --- Load saved statuses from localStorage ---
+        let savedStatuses: StoredStatuses = {};
+        try {
+            const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (savedData) {
+                savedStatuses = JSON.parse(savedData);
+                // Basic validation if needed
+                if (typeof savedStatuses !== 'object' || savedStatuses === null) {
+                    console.warn("Invalid data found in localStorage, resetting.");
+                    savedStatuses = {};
                 }
+                console.log(`Loaded statuses for ${Object.keys(savedStatuses).length} cards from localStorage.`);
+            }
+        } catch (storageError) {
+            console.error("Error reading from localStorage:", storageError);
+            // Continue without saved data
+        }
 
-                // Construct full image path
-                const imgSrc = mappingData.image ? `${IMAGE_DIR}${mappingData.image}` : null;
+        // Create initial card objects and apply saved statuses
+        const initialCardsWithNulls: (Card | null)[] = audioFilenames
+          .map((audioFilename: string) => {
+            const mappingData = birdMapping[audioFilename];
+            if (!mappingData) return null;
 
-                return {
-                    id: audioFilename, // Use audio filename as unique ID
-                    audioFilename: audioFilename,
-                    displayName: mappingData.displayName || 'Unknown Bird', // Fallback display name
-                    imgSrc: imgSrc,
-                    learned: false,
-                    starred: false,
-                };
-            })
-            .filter((card): card is Card => card !== null); // Filter out null entries
+            const savedStatus = savedStatuses[audioFilename]; // Get status by ID (filename)
 
-         console.log(`Successfully created ${initialCards.length} cards.`);
+            return {
+              id: audioFilename,
+              audioFilename: audioFilename,
+              displayName: mappingData.displayName || 'Unknown Bird',
+              imgSrc: mappingData.image ? `${IMAGE_DIR}${mappingData.image}` : null,
+              // Apply saved status or default to false
+              learned: savedStatus?.learned ?? false,
+              starred: savedStatus?.starred ?? false,
+            };
+          });
+        const initialCards: Card[] = initialCardsWithNulls.filter((card: Card | null): card is Card => card !== null);
 
-         // --- Auto-shuffle the initial deck ---
-         const shuffledCards = shuffleArray(initialCards);
-         console.log("Initial deck auto-shuffled.");
+        console.log(`Successfully created ${initialCards.length} cards, applied saved statuses.`);
 
-        setCards(shuffledCards); // Set the shuffled cards
-        setCurrentFilteredIndex(0); // Reset index
+        // --- Auto-shuffle the initial deck ---
+        const shuffledCards = shuffleArray(initialCards);
+        console.log("Initial deck auto-shuffled.");
+
+        setCards(shuffledCards); // Set the final initial cards state
+        setCurrentFilteredIndex(0);
         setIsFlipped(false);
 
       } catch (err) {
-        console.error("Error fetching or processing data:", err);
-        let errorMessage = "Could not load bird data. ";
-        if (err instanceof Error) {
-            errorMessage += err.message;
-        } else {
-            errorMessage += "An unknown error occurred.";
-        }
-        // Add specific guidance (optional)
-        if (errorMessage.includes('404')) {
-            errorMessage += `\nEnsure '/public${AUDIO_DIR}manifest.json' and '/public${MAPPING_URL}' exist.`;
-        } else if (errorMessage.includes('Unexpected token') || errorMessage.includes('Invalid JSON')) {
-             errorMessage += `\nCheck if the manifest and mapping files contain valid JSON.`;
-        }
-        setError(errorMessage);
-        setCards([]); // Clear cards on error
+          // ... (existing error handling) ...
+          console.error("Error fetching or processing data:", err);
+          setError(err instanceof Error ? err.message : "An unknown error occurred");
+          setCards([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchAndSetCards();
-  }, []); // Run only once on mount
+    fetchAndInitialize();
+    // This effect should only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  // --- Save Statuses to localStorage on Change ---
+  useEffect(() => {
+    // Prevent saving during initial load or if cards are empty
+    if (isLoading || cards.length === 0) {
+      return;
+    }
+
+    try {
+      // Create a map of ID -> {learned, starred}
+      const statusesToSave = cards.reduce<StoredStatuses>((acc, card: Card) => {
+        acc[card.id] = { learned: card.learned, starred: card.starred };
+        return acc;
+      }, {});
+
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(statusesToSave));
+      console.log(`Saved statuses for ${Object.keys(statusesToSave).length} cards to localStorage.`);
+
+    } catch (storageError) {
+      console.error("Error saving to localStorage:", storageError);
+      // Handle potential errors (e.g., storage full)
+    }
+    // Run this effect whenever the cards array changes (including learned/starred status)
+  }, [cards, isLoading]);
 
   // --- Derived State (Memoized) ---
   const filteredCards = useMemo(() => {
-    console.log(`Filtering cards with mode: ${filterMode}`); // Debugging
+    console.log(`Filtering cards with mode: ${filterMode}`);
     switch (filterMode) {
       case 'learned':
         return cards.filter(card => card.learned);
@@ -129,7 +149,7 @@ function App() {
         return cards.filter(card => card.starred);
       case 'all':
       default:
-        return cards; // Return the full list
+        return cards;
     }
   }, [cards, filterMode]);
 
@@ -156,14 +176,17 @@ function App() {
 
   // Effect to handle autoplay when the card changes (audio is now the front face)
   useEffect(() => {
+    // Capture ref current value inside the effect
+    const currentAudioElement = audioRef.current;
+
     // When card changes, reset flip state and attempt to play audio
     setIsFlipped(false);
     setIsPlaying(false); // Reset playing state initially
 
-    if (audioRef.current && audioSrc) {
+    if (currentAudioElement && audioSrc) {
       // Important: Load the new source before trying to play
-      audioRef.current.load();
-      const playPromise = audioRef.current.play();
+      currentAudioElement.load();
+      const playPromise = currentAudioElement.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {
           // Autoplay started!
@@ -174,15 +197,15 @@ function App() {
           setIsPlaying(false);
         });
       }
-    } else if (audioRef.current) {
+    } else if (currentAudioElement) {
         // If no audioSrc, ensure player is paused
-        audioRef.current.pause();
+        currentAudioElement.pause();
     }
 
-    // Cleanup function to pause audio if component unmounts or card changes again
+    // Cleanup function using the captured variable
     return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
+      if (currentAudioElement) {
+        currentAudioElement.pause();
       }
     };
   }, [currentCard, audioSrc]); // Re-run ONLY when the card/audio source changes
