@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Square, Star } from 'lucide-react';
+import { CheckSquare, Square, Star, ExternalLink } from 'lucide-react';
 import { Card } from '../types';
 import { AUDIO_DIR } from '../config';
 import AudioPlayer from './AudioPlayer';
@@ -29,6 +29,7 @@ const AllCardsView: React.FC<AllCardsViewProps> = ({ cards, onToggleLearned, onT
                  const LearnedIcon = card.learned ? CheckSquare : Square;
                  const StarIcon = card.starred ? () => <Star size={18} fill="currentColor" /> : Star;
                  const audioSrc = `${AUDIO_DIR}${card.audioFilename}`;
+                 const wikipediaSearchUrl = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(card.displayName)}`;
 
                  return (
                     <div key={card.id} className="bg-white p-3 rounded-lg shadow flex items-center justify-between gap-3 relative border border-gray-200"> {/* Reduced padding/gap */}
@@ -36,9 +37,18 @@ const AllCardsView: React.FC<AllCardsViewProps> = ({ cards, onToggleLearned, onT
                         <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden flex items-center justify-center"> 
                            <BirdImage src={card.imgSrc} alt={card.displayName} className="w-full h-full object-cover" />
                         </div>
-                        {/* Name and Audio */}
+                        {/* Name, Link and Audio */}
                         <div className="flex-grow min-w-0 mr-auto"> {/* Pushes buttons to the right */}
-                            <p className="font-medium text-base text-gray-800 mb-1 truncate">{card.displayName}</p> {/* Use card.displayName directly */}
+                            <p className="font-medium text-base text-gray-800 mb-0.5 truncate">{card.displayName}</p> {/* Use card.displayName directly */}
+                             {/* Wikipedia Link */}
+                             <a
+                                href={wikipediaSearchUrl}
+                                target="_blank" // Open in new tab
+                                rel="noopener noreferrer" // Security best practice
+                                className="inline-flex items-center gap-0.5 text-xs text-blue-600 hover:text-blue-800 hover:underline mb-1 transition-colors"
+                             >
+                                Wikipedia <ExternalLink size={10} />
+                             </a>
                             <AudioPlayer src={audioSrc} />
                         </div>
                          {/* Status Buttons Container */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckSquare, Square, Star, RotateCcw, Bird } from 'lucide-react';
+import { CheckSquare, Square, Star, RotateCcw, Bird, ExternalLink } from 'lucide-react';
 import AudioPlayer from './AudioPlayer';
 import BirdImage from './BirdImage';
 
@@ -39,6 +39,9 @@ const Flashcard: React.FC<FlashcardProps> = ({
 
   // Extract filename from audioSrc
   const audioFilename = audioSrc ? audioSrc.split('/').pop() : 'N/A';
+
+  // Construct Wikipedia search URL
+  const wikipediaSearchUrl = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(displayName)}`;
 
   return (
     // Main container - Removed perspective class
@@ -107,7 +110,17 @@ const Flashcard: React.FC<FlashcardProps> = ({
              {/* Bird Name */}
              <p className="text-xl font-bold text-center text-white drop-shadow-lg">{displayName}</p>
              {/* Audio Filename */}
-             <p className="text-xs font-mono text-center text-gray-300 mt-1 mb-8 drop-shadow-md">{audioFilename}</p>
+             <p className="text-xs font-mono text-center text-gray-300 mt-1 mb-1 drop-shadow-md">{audioFilename}</p> {/* Reduced bottom margin */}
+             {/* Wikipedia Link */}
+             <a
+                href={wikipediaSearchUrl}
+                target="_blank" // Open in new tab
+                rel="noopener noreferrer" // Security best practice
+                onClick={(e) => e.stopPropagation()} // Prevent flipping when clicking link
+                className="inline-flex items-center gap-1 text-xs text-blue-300 hover:text-blue-100 hover:underline mb-8 transition-colors"
+             >
+                See on Wikipedia <ExternalLink size={12} />
+             </a>
           </div>
 
           {/* Flip Button - Overlay */}
