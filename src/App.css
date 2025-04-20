@@ -1,3 +1,9 @@
+/* Custom Audio Player Styles (Placeholder - needs implementation) */
+/* ... other existing styles ... */
+
+/* Tailwind Base/Components/Utilities (If you were using @tailwind directives) */
+/* These might conflict or need integration if you add Tailwind later */
+
 .App {
   text-align: center;
 }
