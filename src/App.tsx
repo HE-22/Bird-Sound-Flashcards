@@ -483,21 +483,22 @@ function App() {
                renderStudyMode()
             ) : (
                /* View All Mode - Span more columns */
-               <div className="col-span-12 lg:col-span-10 lg:col-start-2 w-full">
-                  {/* Add Back to Study button HERE */}
-                  <div className="flex justify-center mb-6"> {/* Centering container */} 
-                     <button
-                       onClick={handleToggleView} // Uses the existing toggle handler
-                       className={accentButtonClasses} // Use existing styles
-                       aria-label="Back to study mode"
-                       title="Back to study mode"
-                     >
-                       <ArrowLeft size={18} />
-                       Back to Study
-                     </button>
-                  </div>
+               <div className="col-span-12 lg:col-span-10 w-full">
                   {/* Render the AllCardsView component */}
                   <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
+
+                  {/* Add Back to Study button at the BOTTOM of this view */}
+                  <div className="flex justify-center items-center gap-4 mt-12 w-full max-w-md">
+                      <button
+                        onClick={handleToggleView} // Uses the existing toggle handler
+                        className={accentButtonClasses} // Use existing styles
+                        aria-label="Back to study mode"
+                        title="Back to study mode"
+                      >
+                        <ArrowLeft size={18} />
+                        Back to Study
+                      </button>
+                  </div>
                </div>
             )}
           </div>

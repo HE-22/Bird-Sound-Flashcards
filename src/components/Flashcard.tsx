@@ -69,7 +69,7 @@ const Flashcard = React.forwardRef<HTMLDivElement, FlashcardProps>((
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onFlip()}
     >
-      <div className="absolute inset-0 w-full h-full bg-gradient-radial from-[#DFF4EA] to-[#bde4cf] rounded-card flex flex-col items-center justify-center [backface-visibility:hidden] p-6 text-center overflow-hidden">
+      <div className="absolute inset-0 w-full h-full bg-gray-100 rounded-card flex flex-col items-center justify-center [backface-visibility:hidden] p-6 text-center overflow-hidden">
         {audioSrc && (
           <audio
             ref={audioRef}
@@ -81,17 +81,17 @@ const Flashcard = React.forwardRef<HTMLDivElement, FlashcardProps>((
             preload="auto"
           />
         )}
-        <h3 className="text-lg font-semibold mb-6 text-text-muted">Listen</h3>
+        <h3 className="text-lg font-semibold mb-6 text-gray-600">Listen</h3>
         <button
           onClick={onTogglePlayPause}
-          className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-700 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#DFF4EA] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          className="w-24 h-24 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-700 transition-colors duration-150 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:shadow-md"
           disabled={!audioSrc}
           aria-label={isPlaying ? "Pause audio" : "Play audio"}
         >
           {isPlaying ? (
-            <Pause size={40} strokeWidth={1.5} fill="currentColor" />
+            <Pause size={48} strokeWidth={1.5} fill="currentColor" />
           ) : (
-            <Play size={40} strokeWidth={1.5} fill="currentColor" className="ml-1"/>
+            <Play size={48} strokeWidth={1.5} fill="currentColor" className="ml-1.5"/>
           )}
         </button>
         <button
@@ -102,7 +102,7 @@ const Flashcard = React.forwardRef<HTMLDivElement, FlashcardProps>((
         >
           <RefreshCw size={18} />
         </button>
-        <p className="text-tiny text-text-muted mt-6">(Tap to reveal name & image)</p>
+        <p className="text-tiny text-gray-500 mt-6">(Tap to reveal name & image)</p>
         <div className="absolute bottom-3 left-3 z-10 flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); onToggleStarred(); }}
