@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter, Play, Pause } from 'lucide-react';
 // Removed App.css import if Tailwind handles all base styles via index.css or similar
 // import './App.css';
 import { AUDIO_DIR, IMAGE_DIR, MANIFEST_URL, MAPPING_URL } from './config';
@@ -20,6 +20,10 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'study' | 'viewAll'>('study');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+  // --- Refs ---
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // --- Data Fetching & Initial Shuffle ---
   useEffect(() => {
@@ -148,23 +152,89 @@ function App() {
 
   const audioSrc = useMemo(() => (currentCard ? `${AUDIO_DIR}${currentCard.audioFilename}` : null), [currentCard]);
 
+  // --- Audio Playback Logic ---
+
+  // Effect to handle autoplay when the card changes (audio is now the front face)
+  useEffect(() => {
+    // When card changes, reset flip state and attempt to play audio
+    setIsFlipped(false);
+    setIsPlaying(false); // Reset playing state initially
+
+    if (audioRef.current && audioSrc) {
+      // Important: Load the new source before trying to play
+      audioRef.current.load();
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          // Autoplay started!
+          setIsPlaying(true);
+        }).catch(error => {
+          console.warn("Audio autoplay failed:", error);
+          // Autoplay was prevented.
+          setIsPlaying(false);
+        });
+      }
+    } else if (audioRef.current) {
+        // If no audioSrc, ensure player is paused
+        audioRef.current.pause();
+    }
+
+    // Cleanup function to pause audio if component unmounts or card changes again
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+    };
+  }, [currentCard, audioSrc]); // Re-run ONLY when the card/audio source changes
+
+  // Effect to pause audio when flipping TO the back (image side)
+  useEffect(() => {
+    if (isFlipped && audioRef.current) {
+      audioRef.current.pause();
+      // No need to set isPlaying false here, the onPause handler will do it
+    }
+    // Do not auto-play when flipping back to front (audio side) here,
+    // let the user control it with the play button after the initial auto-play.
+  }, [isFlipped]);
+
   // --- Event Handlers ---
   const handleFlip = useCallback(() => {
-    if (!currentCard) return; // Don't flip if no card is shown (e.g., empty filter)
+    if (!currentCard) return;
     setIsFlipped(prev => !prev);
+    // Note: Pause logic when flipping is now handled in the useEffect watching isFlipped
   }, [currentCard]);
 
   const handleNext = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex + 1) % filteredCards.length);
-    setIsFlipped(false); // Show front side of the new card
+    // Autoplay/flip reset handled by useEffect watching currentCard
   }, [filteredCards.length]);
 
   const handlePrevious = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex - 1 + filteredCards.length) % filteredCards.length);
-    setIsFlipped(false); // Show front side of the new card
+     // Autoplay/flip reset handled by useEffect watching currentCard
   }, [filteredCards.length]);
+
+  // Toggle Play/Pause for custom button
+  const togglePlayPause = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!audioRef.current) return;
+
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(err => {
+        console.error("Error playing audio manually:", err);
+      });
+    }
+  }, [isPlaying]);
+
+  const handleAudioPlay = () => setIsPlaying(true);
+  const handleAudioPause = () => setIsPlaying(false);
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
 
   const handleToggleLearned = useCallback((idToToggle: string) => {
      setCards(prevCards =>
@@ -249,14 +319,20 @@ function App() {
         <div className="w-full max-w-lg [perspective:1000px]"> {/* Adjusted max width, added perspective */} 
           {filteredCards.length > 0 && currentCard ? (
              <Flashcard
-                key={currentCard.id} // Add key for proper re-renders/animations on change
+                key={currentCard.id} // Key ensures component re-mounts on card change, helping audio reset
                 audioSrc={audioSrc}
                 imgSrc={currentCard.imgSrc}
                 displayName={currentCard.displayName}
                 isFlipped={isFlipped}
                 isLearned={currentCard.learned}
                 isStarred={currentCard.starred}
+                isPlaying={isPlaying}
+                audioRef={audioRef}
                 onFlip={handleFlip}
+                onTogglePlayPause={togglePlayPause}
+                onAudioPlay={handleAudioPlay}
+                onAudioPause={handleAudioPause}
+                onAudioEnded={handleAudioEnded}
                 onToggleLearned={() => handleToggleLearned(currentCard.id)}
                 onToggleStarred={() => handleToggleStarred(currentCard.id)}
              />
