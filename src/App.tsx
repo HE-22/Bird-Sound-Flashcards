@@ -20,7 +20,7 @@ function App() {
   const [viewMode, setViewMode] = useState<'study' | 'viewAll'>('study');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
 
-  // --- Data Fetching ---
+  // --- Data Fetching & Initial Shuffle ---
   useEffect(() => {
     const fetchAndSetCards = async () => {
       setIsLoading(true);
@@ -79,7 +79,11 @@ function App() {
 
          console.log(`Successfully created ${initialCards.length} cards.`);
 
-        setCards(initialCards);
+         // --- Auto-shuffle the initial deck ---
+         const shuffledCards = shuffleArray(initialCards);
+         console.log("Initial deck auto-shuffled.");
+
+        setCards(shuffledCards); // Set the shuffled cards
         setCurrentFilteredIndex(0); // Reset index
         setIsFlipped(false);
 
@@ -354,8 +358,7 @@ function App() {
       {!isLoading && !error && cards.length > 0 && (
            <footer className="mt-12 text-center text-xs text-gray-500">
                {/* Removed click tip as it's more intuitive now */}
-               <p>Filenames like "Common_Blackbird.mp3" work best.</p>
-               {/* Add info about filtering? */}
+               {/* Removed filename hint */}
            </footer>
        )}
 

@@ -108,9 +108,7 @@ const Flashcard: React.FC<FlashcardProps> = ({
           {/* Overlay Container for Name and Button */}
           <div className="absolute inset-0 w-full h-full flex flex-col justify-end items-center p-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent"> {/* Stronger gradient */}
              {/* Bird Name */}
-             <p className="text-xl font-bold text-center text-white drop-shadow-lg">{displayName}</p>
-             {/* Audio Filename */}
-             <p className="text-xs font-mono text-center text-gray-300 mt-1 mb-1 drop-shadow-md">{audioFilename}</p> {/* Reduced bottom margin */}
+             <p className="text-xl font-bold text-center text-white drop-shadow-lg mb-2">{displayName}</p> {/* Added margin bottom */}
              {/* Wikipedia Link */}
              <a
                 href={wikipediaSearchUrl}
