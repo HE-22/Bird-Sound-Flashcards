@@ -224,19 +224,20 @@ function App() {
   const handleFlip = useCallback(() => {
     if (!currentCard) return;
     setIsFlipped(prev => !prev);
-    // Note: Pause logic when flipping is now handled in the useEffect watching isFlipped
   }, [currentCard]);
 
   const handleNext = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex + 1) % filteredCards.length);
-    // Autoplay/flip reset handled by useEffect watching currentCard
+    setIsFlipped(false);
+    // Autoplay/pause is handled by useEffect watching currentCard
   }, [filteredCards.length]);
 
   const handlePrevious = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex - 1 + filteredCards.length) % filteredCards.length);
-     // Autoplay/flip reset handled by useEffect watching currentCard
+    setIsFlipped(false);
+    // Autoplay/pause is handled by useEffect watching currentCard
   }, [filteredCards.length]);
 
   // Toggle Play/Pause for custom button
