@@ -301,38 +301,68 @@ function App() {
         }
     }, [filterMode]);
 
-  // Base classes for pill buttons
+  // --- Base classes for buttons ---
   const baseButtonClasses = "inline-flex items-center justify-center gap-2 h-11 px-5 rounded-pill text-body font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:opacity-38 disabled:pointer-events-none";
   const primaryButtonClasses = `${baseButtonClasses} bg-primary text-white hover:bg-primary-700`;
-  const accentButtonClasses = `${baseButtonClasses} bg-accent text-white hover:bg-blue-500`; // Using blue-500 for hover as example
+  const accentButtonClasses = `${baseButtonClasses} bg-accent text-white hover:bg-blue-500`;
+  // Add styles for the new pill buttons (similar to filter but distinct)
+  const actionPillButtonClasses = "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-pill text-filter-chip font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-bg bg-gray-200 text-text-muted hover:bg-primary/10 hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed";
 
   // --- Render ---
   const renderStudyMode = () => (
      <div className="col-span-12 lg:col-span-8 lg:col-start-3 flex flex-col items-center w-full">
-        {/* Filter Controls - Update styles to segmented control */}
-        <div className="mb-6 flex items-center border border-border rounded-pill p-0.5 bg-gray-100 shadow-inner">
-           <span className="text-tiny text-text-muted font-medium mr-2 pl-3 flex items-center gap-1"><Filter size={16} /> Filter:</span>
-           <div role="radiogroup" className="flex"> {/* Use radiogroup role */}
-              {(['all', 'unlearned', 'learned', 'starred'] as FilterMode[]).map(mode => (
-                  <button
-                    key={mode}
-                    role="radio" // Use radio role for segments
-                    aria-checked={filterMode === mode} // Indicate checked state
-                    onClick={() => handleSetFilterMode(mode)}
-                    className={`px-3 py-1.5 rounded-pill text-filter-chip font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 ${ 
-                      filterMode === mode
-                        ? 'bg-primary text-white shadow-sm border border-primary-700' 
-                        : 'text-text-muted hover:bg-primary/10 hover:text-primary'
-                    }`}
-                    // No disabled needed as the active one is visually distinct
-                  >
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                  </button>
-              ))}
+        {/* Combined Filter and Action Controls */}
+        <div className="mb-6 w-full flex flex-wrap items-center justify-center gap-2 border-b border-border pb-4"> {/* Flex container for wrapping */} 
+           {/* Filter Pills */}
+           <div className="flex items-center border border-border rounded-pill p-0.5 bg-gray-100 shadow-inner flex-shrink-0"> {/* Filter group */} 
+              <span className="text-tiny text-text-muted font-medium mr-2 pl-3 flex items-center gap-1 flex-shrink-0"><Filter size={16} /> Filter:</span>
+              <div role="radiogroup" className="flex"> {/* Radio group */}
+                 {(['all', 'unlearned', 'learned', 'starred'] as FilterMode[]).map(mode => (
+                     <button
+                       key={mode}
+                       role="radio"
+                       aria-checked={filterMode === mode}
+                       onClick={() => handleSetFilterMode(mode)}
+                       className={`px-3 py-1.5 rounded-pill text-filter-chip font-medium transition-colors duration-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-gray-100 ${ 
+                         filterMode === mode
+                           ? 'bg-primary text-white shadow-sm border border-primary-700' 
+                           : 'text-text-muted hover:bg-primary/10 hover:text-primary'
+                       }`}
+                     >
+                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                     </button>
+                 ))}
+              </div>
+           </div>
+
+           {/* Action Pills: View All & Shuffle */}
+           <div className="flex items-center gap-2 flex-shrink-0"> {/* Actions group */} 
+              {/* View All Button */}
+              <button
+                 onClick={handleToggleView}
+                 className={actionPillButtonClasses}
+                 aria-label="View all cards"
+                 title="View all cards"
+              >
+                  <List size={16} />
+                  View All
+              </button>
+
+              {/* Shuffle Button */}
+              <button
+                  onClick={handleShuffle}
+                  disabled={cards.length <= 1}
+                  className={actionPillButtonClasses}
+                  aria-label="Shuffle deck"
+                  title="Shuffle deck (shuffles all cards)"
+              >
+                  <Shuffle size={16} />
+                  Shuffle
+              </button>
            </div>
         </div>
 
-        {/* Card Counter - Use new text styles */}
+        {/* Card Counter */}
         <p className="text-tiny text-text-muted mb-4">
            Card {filteredCards.length > 0 ? currentFilteredIndex + 1 : 0} of {filteredCards.length}
            {filterMode !== 'all' && ` (${filterMode} filter - ${cards.length} total)`}
@@ -368,12 +398,12 @@ function App() {
           )}
         </div>
 
-        {/* Navigation Buttons Container - Placed below card */} 
+        {/* Navigation Buttons Container */}
         <div className="flex justify-center items-center gap-4 mt-8 w-full max-w-md">
            <button
               onClick={handlePrevious}
               disabled={filteredCards.length <= 1}
-              className={primaryButtonClasses} // Use defined classes
+              className={primaryButtonClasses}
               aria-label="Previous card"
            >
               <ChevronLeft size={20} /> Previous
@@ -381,7 +411,7 @@ function App() {
            <button
               onClick={handleNext}
               disabled={filteredCards.length <= 1}
-              className={primaryButtonClasses} // Use defined classes
+              className={primaryButtonClasses}
               aria-label="Next card"
            >
               Next <ChevronRight size={20} />
@@ -470,19 +500,6 @@ function App() {
                   <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
                </div>
             )}
-
-            {/* Bottom Global Controls: Now only Shuffle */}
-            <div className="flex justify-center items-center gap-4 mt-12 w-full max-w-md">
-              <button
-                onClick={handleShuffle}
-                disabled={cards.length <= 1}
-                className={accentButtonClasses} // Use defined classes
-                aria-label="Shuffle deck"
-                title="Shuffle deck (shuffles all cards)"
-              >
-                <Shuffle size={18} /> Shuffle All
-              </button>
-            </div>
           </div>
         ) : (
            /* No Cards Message */
