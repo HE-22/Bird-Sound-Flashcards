@@ -52,7 +52,7 @@ const Flashcard = React.forwardRef<HTMLDivElement, FlashcardProps>((
 
   return (
     <div
-      className="relative w-full aspect-16/10 rounded-card shadow-card overflow-hidden"
+      className="relative w-full aspect-16/10 rounded-card shadow-card overflow-hidden border border-border"
       onClick={onFlip}
     >
       {isFlipped ? (

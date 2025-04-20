@@ -321,8 +321,18 @@ function App() {
         {!isLoading && !error && cards.length >= 0 ? (
           <div className="col-span-12 flex flex-col items-center">
 
-            {/* Top Global Controls: Shuffle and View Toggle */}
-            <div className="flex justify-center items-center gap-4 mb-6 w-full max-w-md">
+            {/* Conditional Rendering based on viewMode */}
+            {viewMode === 'study' ? (
+               renderStudyMode()
+            ) : (
+               /* View All Mode - Span more columns */
+               <div className="col-span-12 lg:col-span-10 lg:col-start-2 w-full">
+                  <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
+               </div>
+            )}
+
+            {/* Bottom Global Controls: Shuffle and View Toggle */}
+            <div className="flex justify-center items-center gap-4 mt-12 w-full max-w-md"> { /* Increased margin-top */}
               <button
                   onClick={handleShuffle}
                   disabled={cards.length <= 1}
@@ -342,17 +352,6 @@ function App() {
                    {viewMode === 'study' ? 'View All' : 'Study Mode'}
               </button>
             </div>
-
-            {/* Conditional Rendering based on viewMode */}
-            {viewMode === 'study' ? (
-               renderStudyMode()
-            ) : (
-               /* View All Mode - Span more columns */
-               <div className="col-span-12 lg:col-span-10 lg:col-start-2 w-full">
-                  <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
-               </div>
-            )}
-
           </div>
         ) : (
            /* No Cards Message */
