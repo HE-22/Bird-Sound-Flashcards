@@ -16,6 +16,7 @@ interface FlashcardProps {
   onFlip: () => void;
   onToggleLearned: () => void;
   onToggleStarred: () => void;
+  // audioFilename is no longer needed here, can be derived from audioSrc
 }
 
 /**
@@ -36,17 +37,22 @@ const Flashcard: React.FC<FlashcardProps> = ({
   const LearnedIcon = isLearned ? CheckSquare : Square;
   const StarIcon = isStarred ? () => <Star size={20} fill="currentColor" /> : Star;
 
+  // Extract filename from audioSrc
+  const audioFilename = audioSrc ? audioSrc.split('/').pop() : 'N/A';
+
   return (
-    <div className="w-full max-w-md h-80 perspective relative group">
-       {/* Status Buttons Container - Remains the same */}
+    // Main container - Removed perspective class
+    <div className="w-full max-w-md h-80 relative group bg-white rounded-xl shadow-lg overflow-hidden">
+       {/* Status Buttons Container - Positioned absolutely */}
        <div className="absolute top-2 right-2 z-20 flex gap-2">
           {/* Star Button */}
           <button
               onClick={(e) => { e.stopPropagation(); onToggleStarred(); }}
-              className={`p-1.5 rounded-full transition-colors bg-black bg-opacity-20 hover:bg-opacity-40 ${ // Adjusted style for visibility
+              // Adjusted styles for visibility on potentially varied backgrounds
+              className={`p-1.5 rounded-full transition-colors ${
                 isStarred
-                  ? 'text-yellow-400'
-                  : 'text-white text-opacity-80 hover:text-yellow-400'
+                  ? 'text-yellow-400 bg-black/30 hover:bg-black/50'
+                  : 'text-white/80 bg-black/30 hover:bg-black/50 hover:text-yellow-400'
               }`}
               aria-label={isStarred ? "Unstar card" : "Star card"}
               title={isStarred ? "Unstar card" : "Star card"}
@@ -56,10 +62,11 @@ const Flashcard: React.FC<FlashcardProps> = ({
           {/* Learned Button */}
          <button
              onClick={(e) => { e.stopPropagation(); onToggleLearned(); }}
-             className={`p-1.5 rounded-full transition-colors bg-black bg-opacity-20 hover:bg-opacity-40 ${ // Adjusted style for visibility
-             isLearned
-                 ? 'text-green-400'
-                 : 'text-white text-opacity-80 hover:text-green-400'
+             // Adjusted styles for visibility on potentially varied backgrounds
+             className={`p-1.5 rounded-full transition-colors ${
+               isLearned
+                 ? 'text-green-400 bg-black/30 hover:bg-black/50'
+                 : 'text-white/80 bg-black/30 hover:bg-black/50 hover:text-green-400'
              }`}
              aria-label={isLearned ? "Mark as not learned" : "Mark as learned"}
              title={isLearned ? "Mark as not learned" : "Mark as learned"}
@@ -68,22 +75,17 @@ const Flashcard: React.FC<FlashcardProps> = ({
          </button>
        </div>
 
-      {/* Flipping Container */}
-      <div
-        className={`relative w-full h-full transition-transform duration-700 transform-style-preserve-3d rounded-xl shadow-lg cursor-pointer overflow-hidden ${ // Added overflow-hidden here
-          isFlipped ? 'rotate-y-180' : ''
-        }`}
-        onClick={onFlip}
-      >
-        {/* Front Side (Audio) - Remains largely the same */}
-        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-sky-100 to-blue-200 p-6 rounded-xl backface-hidden">
+      {/* Conditional Rendering */}
+      {!isFlipped ? (
+        /* Front Side (Audio) */
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-sky-100 to-blue-200 p-6">
           <h3 className="text-lg font-semibold text-sky-800 mb-4">Listen</h3>
           <AudioPlayer src={audioSrc} />
           <button
-            onClick={(e) => { e.stopPropagation(); onFlip(); }}
-            className="absolute bottom-4 right-4 text-sky-600 hover:text-sky-800 transition-colors"
-            aria-label="Show bird name"
-            title="Show bird name"
+            onClick={onFlip} // Direct call to onFlip
+            className="absolute bottom-4 right-4 text-sky-600 hover:text-sky-800 transition-colors p-2 rounded-full bg-white/30 hover:bg-white/50"
+            aria-label="Show bird name and image"
+            title="Show bird name and image"
           >
             <RotateCcw size={24} />
           </button>
@@ -91,33 +93,34 @@ const Flashcard: React.FC<FlashcardProps> = ({
             <Bird size={32} />
           </div>
         </div>
-
-        {/* Back Side (Image & Overlays) */}
-        <div className="absolute inset-0 w-full h-full bg-gray-200 rounded-xl backface-hidden rotate-y-180 overflow-hidden"> {/* Base background if image fails, remove gradient */} 
+      ) : (
+        /* Back Side (Image & Info) */
+        <div className="relative w-full h-full bg-gray-800"> {/* Darker background for contrast */}
           {/* Bird Image - Covers the whole area */}
-          <BirdImage 
-             src={imgSrc} 
+          <BirdImage
+             src={imgSrc}
              alt={displayName}
-             className="absolute inset-0 w-full h-full object-cover rounded-xl" // Cover the area
+             className="absolute inset-0 w-full h-full object-cover opacity-80" // Slightly reduced opacity
           />
           {/* Overlay Container for Name and Button */}
-          <div className="absolute inset-0 w-full h-full flex flex-col justify-end p-4 bg-gradient-to-t from-black/50 via-black/20 to-transparent"> {/* Gradient overlay for text contrast */} 
-             {/* Bird Name */} 
-             <p className="text-xl font-bold text-center text-white drop-shadow-md mb-8">{displayName}</p> {/* White text, bottom aligned */} 
+          <div className="absolute inset-0 w-full h-full flex flex-col justify-end items-center p-4 bg-gradient-to-t from-black/70 via-black/40 to-transparent"> {/* Stronger gradient */}
+             {/* Bird Name */}
+             <p className="text-xl font-bold text-center text-white drop-shadow-lg">{displayName}</p>
+             {/* Audio Filename */}
+             <p className="text-xs font-mono text-center text-gray-300 mt-1 mb-8 drop-shadow-md">{audioFilename}</p>
           </div>
 
           {/* Flip Button - Overlay */}
           <button
-            onClick={(e) => { e.stopPropagation(); onFlip(); }}
-            className="absolute bottom-4 right-4 p-2 rounded-full bg-black bg-opacity-20 text-white text-opacity-80 hover:bg-opacity-40 hover:text-opacity-100 transition-all"
+            onClick={onFlip} // Direct call to onFlip
+            className="absolute bottom-4 right-4 p-2 rounded-full bg-black/30 text-white/80 hover:bg-black/50 hover:text-white transition-all"
             aria-label="Show audio player"
             title="Show audio player"
           >
             <RotateCcw size={20} />
           </button>
-          {/* Decorative Bird Icon REMOVED */}
         </div>
-      </div>
+      )}
     </div>
   );
 };
