@@ -206,5 +206,25 @@
     "Wood Thrush.mp3": {
         "displayName": "Wood Thrush",
         "image": "Wood_Thrush.jpg"
+    },
+    "European-starling.ogg": {
+        "displayName": "European Starling",
+        "image": "European_Starling.jpg"
+    },
+    "Red-headed Woodpecker.wav": {
+        "displayName": "Red-headed Woodpecker",
+        "image": "Redheaded_Woodpecker.jpg"
+    },
+    "Bald Eagle.ogg": {
+        "displayName": "Bald Eagle",
+        "image": "Bald_Eagle.jpg"
+    },
+    "Rock Dove.mp3": {
+        "displayName": "Rock Dove",
+        "image": "Rock_Pigeon.jpg"
+    },
+    "House Sparrow Call.wav": {
+        "displayName": "House Sparrow",
+        "image": "House_sparrow.jpg"
     }
 }
