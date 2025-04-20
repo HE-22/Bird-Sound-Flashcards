@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Play, RotateCcw, ChevronLeft, ChevronRight, Bird, CheckSquare, Square, List, Shuffle, Star, Filter } from 'lucide-react';
+import { Play, RotateCcw, ChevronLeft, ChevronRight, Bird, CheckSquare, Square, List, Shuffle, Star, Filter, ImageOff } from 'lucide-react';
 import './App.css'; // Keep default CSS import
 
 // --- Configuration ---
 const AUDIO_DIR = '/audio/'; // Path relative to the public folder
+const IMAGE_DIR = '/bird_images/'; // Path relative to the public folder
 const MANIFEST_URL = `${AUDIO_DIR}manifest.json`; // Path to the manifest file
+const MAPPING_URL = '/data/bird_mapping.json'; // Path to the new mapping file
 
 // --- Types & Interfaces ---
+interface BirdData {
+    displayName: string;
+    image: string | null; // Filename or null
+}
+
 interface Card {
-  id: string; // Use filename as a unique ID for simplicity
-  filename: string;
+  id: string; // Audio filename
+  audioFilename: string;
+  displayName: string;
+  imgSrc: string | null; // Full image path or null
   learned: boolean;
-  starred: boolean; // Add starred status
+  starred: boolean;
 }
 
 // Define filter modes
@@ -19,22 +28,17 @@ type FilterMode = 'all' | 'unlearned' | 'learned' | 'starred';
 
 // --- Helper Function ---
 /**
- * Extracts the bird name from a filename.
- * Assumes filename format like "Common_Blackbird.mp3" -> "Common Blackbird"
- * @param {string} filename - The full filename (e.g., "Robin.mp3").
- * @returns {string} The extracted and formatted bird name.
+ * Constructs the image source URL from an audio filename.
+ * Assumes image filename matches audio filename base (e.g., "Common_Blackbird.mp3" -> "/bird_images/Common_Blackbird.jpg")
+ * @param {string} filename - The audio filename.
+ * @returns {string | null} The image source URL or null if no filename.
  */
-const getBirdNameFromFilename = (filename: string | undefined): string => {
-  if (!filename) return 'Unknown Bird';
-  // Remove extension
-  const nameWithoutExtension = filename.substring(0, filename.lastIndexOf('.')) || filename;
-  // Replace underscores/hyphens with spaces
-  const formattedName = nameWithoutExtension.replace(/[_-]/g, ' ');
-  // Basic title case (capitalize first letter of each word)
-  return formattedName
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
+const getBirdImageSrc = (filename: string | undefined): string | null => {
+    if (!filename) return null;
+    // Get base name by removing the extension
+    const basename = filename.substring(0, filename.lastIndexOf('.')) || filename;
+    // Assume JPG extension for images
+    return `${IMAGE_DIR}${basename}.jpg`;
 };
 
 // --- Components ---
@@ -62,17 +66,57 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
 };
 
 /**
+ * Image Component with Error Handling Props
+ */
+interface BirdImageProps {
+    src: string | null;
+    alt: string;
+    className?: string;
+}
+
+/**
+ * Image Component with Error Handling
+ */
+const BirdImage: React.FC<BirdImageProps> = ({ src, alt, className }) => {
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        setError(false); // Reset error state when src changes
+    }, [src]);
+
+    if (error || !src) {
+        return (
+            <div className={`flex flex-col items-center justify-center text-gray-400 ${className} bg-gray-100 rounded`}>
+                <ImageOff size={32} />
+                <span className="text-xs mt-1">Image not found</span>
+            </div>
+        );
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className={className}
+            onError={() => setError(true)}
+            loading="lazy" // Lazy load images
+        />
+    );
+};
+
+/**
  * Flashcard Component Props
  */
 interface FlashcardProps {
   audioSrc: string | null;
-  birdName: string;
+  imgSrc: string | null;
+  displayName: string; // Use displayName from mapping
   isFlipped: boolean;
   isLearned: boolean;
-  isStarred: boolean; // Add starred status
+  isStarred: boolean;
   onFlip: () => void;
   onToggleLearned: () => void;
-  onToggleStarred: () => void; // Add handler for starring
+  onToggleStarred: () => void;
 }
 
 /**
@@ -80,21 +124,20 @@ interface FlashcardProps {
  */
 const Flashcard: React.FC<FlashcardProps> = ({
     audioSrc,
-    birdName,
+    imgSrc,
+    displayName, // Use direct displayName
     isFlipped,
     isLearned,
-    isStarred, // Destructure new prop
+    isStarred,
     onFlip,
     onToggleLearned,
-    onToggleStarred // Destructure new prop
+    onToggleStarred
 }) => {
   const LearnedIcon = isLearned ? CheckSquare : Square;
-  // Use fill for starred icon
   const StarIcon = isStarred ? () => <Star size={20} fill="currentColor" /> : Star;
 
   return (
-    <div className="w-full max-w-md h-72 perspective relative group"> {/* Add group for potential hover effects if needed later */}
-
+    <div className="w-full max-w-md h-80 perspective relative group">
       {/* Status Buttons Container (outside the flipping card) */}
       <div className="absolute top-2 right-2 z-20 flex gap-2">
          {/* Star Button */}
@@ -149,19 +192,31 @@ const Flashcard: React.FC<FlashcardProps> = ({
           </div>
         </div>
 
-        {/* Back Side (Bird Name) */}
-        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-100 to-green-200 p-6 rounded-xl backface-hidden rotate-y-180">
-          <h3 className="text-lg font-semibold text-emerald-800 mb-4">Bird Name</h3>
-          <p className="text-2xl font-bold text-center text-emerald-900">{birdName}</p>
+        {/* Back Side (Image & Name) */}
+        <div className="absolute inset-0 w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-emerald-100 to-green-200 p-4 rounded-xl backface-hidden rotate-y-180 overflow-hidden"> {/* Added padding & overflow hidden */}
+          {/* Bird Image */} 
+          <div className="w-full h-4/6 flex items-center justify-center mb-3"> {/* Container for image */} 
+             <BirdImage 
+                src={imgSrc} 
+                alt={displayName}
+                className="max-w-full max-h-full object-contain rounded"
+             />
+          </div>
+
+          {/* Bird Name */} 
+          <p className="text-xl font-bold text-center text-emerald-900 mt-auto">{displayName}</p> {/* Use displayName */} 
+
+          {/* Flip Button */} 
           <button
-            onClick={(e) => { e.stopPropagation(); onFlip(); }} // Keep flip on RotateCcw button
+            onClick={(e) => { e.stopPropagation(); onFlip(); }}
             className="absolute bottom-4 right-4 text-emerald-600 hover:text-emerald-800 transition-colors"
             aria-label="Show audio player"
             title="Show audio player"
           >
             <RotateCcw size={24} />
           </button>
-          <div className="absolute top-4 right-4 text-emerald-500 opacity-50"> {/* Changed from left to right for variety */}
+          {/* Decorative Bird Icon */} 
+          <div className="absolute top-4 right-4 text-emerald-500 opacity-50">
             <Bird size={32} />
           </div>
         </div>
@@ -176,7 +231,7 @@ const Flashcard: React.FC<FlashcardProps> = ({
 interface AllCardsViewProps {
     cards: Card[];
     onToggleLearned: (id: string) => void;
-    onToggleStarred: (id: string) => void; // Add handler for starring
+    onToggleStarred: (id: string) => void;
 }
 
 /**
@@ -188,40 +243,42 @@ const AllCardsView: React.FC<AllCardsViewProps> = ({ cards, onToggleLearned, onT
     }
 
     return (
-        <div className="w-full max-w-3xl mt-6 space-y-3"> {/* Reduced mt and space-y */}
+        <div className="w-full max-w-3xl mt-6 space-y-3">
             <h2 className="text-2xl font-semibold text-gray-700 mb-4 text-center">All Cards ({cards.length})</h2>
             {cards.map((card) => {
                  const LearnedIcon = card.learned ? CheckSquare : Square;
-                 // Use fill for starred icon
                  const StarIcon = card.starred ? () => <Star size={18} fill="currentColor" /> : Star;
-                 const birdName = getBirdNameFromFilename(card.filename);
-                 const audioSrc = `${AUDIO_DIR}${card.filename}`;
+                 const audioSrc = `${AUDIO_DIR}${card.audioFilename}`;
+
                  return (
-                    <div key={card.id} className="bg-white p-4 rounded-lg shadow flex items-center justify-between gap-4 relative border border-gray-200"> {/* Center items vertically */}
-                        <div className="flex-grow min-w-0"> {/* Allow shrinking */}
-                            <p className="font-medium text-lg text-gray-800 mb-2 truncate">{birdName}</p> {/* Truncate long names */}
+                    <div key={card.id} className="bg-white p-3 rounded-lg shadow flex items-center justify-between gap-3 relative border border-gray-200"> {/* Reduced padding/gap */}
+                        {/* Thumbnail Image */}
+                        <div className="w-16 h-16 flex-shrink-0 bg-gray-100 rounded overflow-hidden flex items-center justify-center"> 
+                           <BirdImage src={card.imgSrc} alt={card.displayName} className="w-full h-full object-cover" />
+                        </div>
+                        {/* Name and Audio */}
+                        <div className="flex-grow min-w-0 mr-auto"> {/* Pushes buttons to the right */}
+                            <p className="font-medium text-base text-gray-800 mb-1 truncate">{card.displayName}</p> {/* Use card.displayName directly */}
                             <AudioPlayer src={audioSrc} />
                         </div>
                          {/* Status Buttons Container */}
-                         <div className="flex flex-col items-center gap-2 ml-2"> {/* Align buttons vertically */}
+                         <div className="flex flex-col items-center gap-2 ml-2 flex-shrink-0"> {/* Ensure buttons don't wrap */} 
+                              {/* Star Button */}
                               <button
                                 onClick={() => onToggleStarred(card.id)}
                                 className={`p-1 rounded-full transition-colors ${
-                                card.starred
-                                    ? 'text-yellow-500 bg-yellow-100 hover:bg-yellow-200'
-                                    : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-yellow-500'
+                                card.starred ? 'text-yellow-500 bg-yellow-100 hover:bg-yellow-200' : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-yellow-500'
                                 }`}
                                 aria-label={card.starred ? "Unstar card" : "Star card"}
                                 title={card.starred ? "Unstar card" : "Star card"}
                               >
                                 <StarIcon size={18} />
                             </button>
+                            {/* Learned Button */}
                             <button
                                 onClick={() => onToggleLearned(card.id)}
                                 className={`p-1 rounded-full transition-colors ${
-                                card.learned
-                                    ? 'text-green-600 bg-green-100 hover:bg-green-200'
-                                    : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-green-600'
+                                card.learned ? 'text-green-600 bg-green-100 hover:bg-green-200' : 'text-gray-400 bg-gray-100 hover:bg-gray-200 hover:text-green-600'
                                 }`}
                                 aria-label={card.learned ? "Mark as not learned" : "Mark as learned"}
                                 title={card.learned ? "Mark as not learned" : "Mark as learned"}
@@ -255,13 +312,13 @@ function shuffleArray<T>(array: T[]): T[] {
  */
 function App() {
   // --- State ---
-  const [cards, setCards] = useState<Card[]>([]); // Holds the master list of all cards
-  const [currentFilteredIndex, setCurrentFilteredIndex] = useState<number>(0); // Index within the filtered list
+  const [cards, setCards] = useState<Card[]>([]);
+  const [currentFilteredIndex, setCurrentFilteredIndex] = useState<number>(0);
   const [isFlipped, setIsFlipped] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'study' | 'viewAll'>('study');
-  const [filterMode, setFilterMode] = useState<FilterMode>('all'); // Add filter state, default 'all'
+  const [filterMode, setFilterMode] = useState<FilterMode>('all');
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -269,40 +326,76 @@ function App() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(MANIFEST_URL);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status} - Could not fetch ${MANIFEST_URL}`);
+        // Fetch both manifest and mapping concurrently
+        const [manifestResponse, mappingResponse] = await Promise.all([
+            fetch(MANIFEST_URL),
+            fetch(MAPPING_URL)
+        ]);
+
+        if (!manifestResponse.ok) {
+          throw new Error(`Manifest fetch error! status: ${manifestResponse.status} - Could not fetch ${MANIFEST_URL}`);
         }
-        const filenames = await response.json();
-        if (!Array.isArray(filenames) || filenames.some(item => typeof item !== 'string')) {
+        if (!mappingResponse.ok) {
+             throw new Error(`Mapping fetch error! status: ${mappingResponse.status} - Could not fetch ${MAPPING_URL}`);
+        }
+
+        const audioFilenames = await manifestResponse.json();
+        const birdMapping: Record<string, BirdData> = await mappingResponse.json(); // Type the mapping
+
+        // Validate manifest format
+        if (!Array.isArray(audioFilenames) || audioFilenames.some(item => typeof item !== 'string')) {
           throw new Error(`Invalid manifest format at ${MANIFEST_URL}. Expected an array of strings.`);
         }
-        console.log(`Loaded ${filenames.length} audio file names from manifest.`);
+        // Basic validation for mapping format (check if it's an object)
+         if (typeof birdMapping !== 'object' || birdMapping === null) {
+            throw new Error(`Invalid mapping format at ${MAPPING_URL}. Expected a JSON object.`);
+         }
 
-        // Initialize cards with learned and starred status as false
-        const initialCards: Card[] = filenames.map(filename => ({
-          id: filename, // Use filename as unique ID
-          filename: filename,
-          learned: false,
-          starred: false, // Initialize starred
-        }));
+        console.log(`Loaded ${audioFilenames.length} audio file names from manifest.`);
+        console.log(`Loaded mapping for ${Object.keys(birdMapping).length} birds.`);
+
+        // Create Card objects using the mapping
+        const initialCards: Card[] = audioFilenames
+            .map(audioFilename => {
+                const mappingData = birdMapping[audioFilename];
+                if (!mappingData) {
+                    console.warn(`No mapping found for audio file: ${audioFilename}. Skipping card.`);
+                    return null; // Skip if no mapping exists for this audio file
+                }
+
+                // Construct full image path
+                const imgSrc = mappingData.image ? `${IMAGE_DIR}${mappingData.image}` : null;
+
+                return {
+                    id: audioFilename, // Use audio filename as unique ID
+                    audioFilename: audioFilename,
+                    displayName: mappingData.displayName || 'Unknown Bird', // Fallback display name
+                    imgSrc: imgSrc,
+                    learned: false,
+                    starred: false,
+                };
+            })
+            .filter((card): card is Card => card !== null); // Filter out null entries
+
+         console.log(`Successfully created ${initialCards.length} cards.`);
 
         setCards(initialCards);
         setCurrentFilteredIndex(0); // Reset index
         setIsFlipped(false);
+
       } catch (err) {
-        console.error("Error fetching or parsing manifest:", err);
-        let errorMessage = "Could not load audio manifest. ";
+        console.error("Error fetching or processing data:", err);
+        let errorMessage = "Could not load bird data. ";
         if (err instanceof Error) {
             errorMessage += err.message;
         } else {
             errorMessage += "An unknown error occurred.";
         }
-        // Specific guidance for common issues
+        // Add specific guidance (optional)
         if (errorMessage.includes('404')) {
-            errorMessage += `\nEnsure '/public${AUDIO_DIR}manifest.json' exists and contains a JSON array of filenames (e.g., ["bird1.mp3", "bird2.mp3"]).`;
+            errorMessage += `\nEnsure '/public${AUDIO_DIR}manifest.json' and '/public${MAPPING_URL}' exist.`;
         } else if (errorMessage.includes('Unexpected token') || errorMessage.includes('Invalid JSON')) {
-             errorMessage += `\nCheck if '/public${AUDIO_DIR}manifest.json' contains valid JSON. It should look like: ["file1.mp3", "file2.mp3"]`;
+             errorMessage += `\nCheck if the manifest and mapping files contain valid JSON.`;
         }
         setError(errorMessage);
         setCards([]); // Clear cards on error
@@ -316,8 +409,6 @@ function App() {
 
 
   // --- Derived State (Memoized) ---
-
-  // Filtered list of cards based on the current filterMode
   const filteredCards = useMemo(() => {
     console.log(`Filtering cards with mode: ${filterMode}`); // Debugging
     switch (filterMode) {
@@ -333,7 +424,6 @@ function App() {
     }
   }, [cards, filterMode]);
 
-  // The actual card object currently being displayed (from the filtered list)
   const currentCard = useMemo(() => {
     if (!filteredCards || filteredCards.length === 0 || currentFilteredIndex >= filteredCards.length) {
       console.log("Current card calculation: No card available"); // Debugging
@@ -344,35 +434,26 @@ function App() {
     return card;
   }, [filteredCards, currentFilteredIndex]);
 
-  // Other derived data based on the currentCard
-  const audioSrc = useMemo(() => (currentCard ? `${AUDIO_DIR}${currentCard.filename}` : null), [currentCard]);
-  const birdName = useMemo(() => getBirdNameFromFilename(currentCard?.filename), [currentCard]);
-  const isLearned = useMemo(() => (currentCard?.learned ?? false), [currentCard]);
-  const isStarred = useMemo(() => (currentCard?.starred ?? false), [currentCard]); // Add memo for starred
+  const audioSrc = useMemo(() => (currentCard ? `${AUDIO_DIR}${currentCard.audioFilename}` : null), [currentCard]);
 
   // --- Event Handlers ---
-
-  /** Flips the current card */
   const handleFlip = useCallback(() => {
     if (!currentCard) return; // Don't flip if no card is shown (e.g., empty filter)
     setIsFlipped(prev => !prev);
   }, [currentCard]);
 
-  /** Navigates to the next card IN THE FILTERED LIST */
   const handleNext = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex + 1) % filteredCards.length);
     setIsFlipped(false); // Show front side of the new card
   }, [filteredCards.length]);
 
-  /** Navigates to the previous card IN THE FILTERED LIST */
   const handlePrevious = useCallback(() => {
     if (filteredCards.length === 0) return;
     setCurrentFilteredIndex(prevIndex => (prevIndex - 1 + filteredCards.length) % filteredCards.length);
     setIsFlipped(false); // Show front side of the new card
   }, [filteredCards.length]);
 
-  /** Toggles the learned status of a card by its ID (updates master list) */
   const handleToggleLearned = useCallback((idToToggle: string) => {
      setCards(prevCards =>
         prevCards.map(card =>
@@ -382,8 +463,7 @@ function App() {
      // Note: currentCard derived state will update automatically due to `cards` dependency
   }, []);
 
-  /** Toggles the starred status of a card by its ID (updates master list) */
-   const handleToggleStarred = useCallback((idToToggle: string) => {
+  const handleToggleStarred = useCallback((idToToggle: string) => {
       setCards(prevCards =>
          prevCards.map(card =>
            card.id === idToToggle ? { ...card, starred: !card.starred } : card
@@ -391,17 +471,15 @@ function App() {
       );
    }, []);
 
-  /** Shuffles the MASTER list and resets the filtered index */
-   const handleShuffle = useCallback(() => {
+  const handleShuffle = useCallback(() => {
       if (cards.length <= 1) return;
       setCards(prevCards => shuffleArray(prevCards));
       setCurrentFilteredIndex(0); // Reset index in (potentially new order) filtered list
       setIsFlipped(false);
       console.log("Deck shuffled.");
-   }, [cards.length]); // Depends on master list length for shuffle trigger
+   }, [cards.length]);
 
-   /** Toggles between study view and view all */
-    const handleToggleView = useCallback(() => {
+  const handleToggleView = useCallback(() => {
         setViewMode(prevMode => (prevMode === 'study' ? 'viewAll' : 'study'));
         setIsFlipped(false);
         // Reset filter and index when switching back to study mode? Optional, but might be good UX.
@@ -409,15 +487,14 @@ function App() {
         // setCurrentFilteredIndex(0);
     }, []);
 
-    /** Sets the current filter mode and resets the index */
-    const handleSetFilterMode = useCallback((newMode: FilterMode) => {
+  const handleSetFilterMode = useCallback((newMode: FilterMode) => {
         if (newMode !== filterMode) {
             console.log(`Setting filter mode to: ${newMode}`); // Debugging
             setFilterMode(newMode);
             setCurrentFilteredIndex(0); // Reset index when filter changes
             setIsFlipped(false);
         }
-    }, [filterMode]); // Depends on current filterMode
+    }, [filterMode]);
 
 
   // --- Render ---
@@ -453,16 +530,17 @@ function App() {
         {filteredCards.length > 0 && currentCard ? (
            <Flashcard
               audioSrc={audioSrc}
-              birdName={birdName}
+              imgSrc={currentCard.imgSrc}
+              displayName={currentCard.displayName}
               isFlipped={isFlipped}
-              isLearned={isLearned}
-              isStarred={isStarred} // Pass starred status
+              isLearned={currentCard.learned}
+              isStarred={currentCard.starred}
               onFlip={handleFlip}
               onToggleLearned={() => handleToggleLearned(currentCard.id)}
-              onToggleStarred={() => handleToggleStarred(currentCard.id)} // Pass star handler
+              onToggleStarred={() => handleToggleStarred(currentCard.id)}
            />
         ) : (
-           <div className="w-full max-w-md h-72 flex items-center justify-center bg-gray-100 rounded-xl shadow-inner">
+           <div className="w-full max-w-md h-80 flex items-center justify-center bg-gray-100 rounded-xl shadow-inner"> {/* Adjusted height */}
               <p className="text-gray-500">
                  {cards.length === 0 ? 'No cards loaded.' : `No cards match the "${filterMode}" filter.`}
               </p>
@@ -551,7 +629,7 @@ function App() {
              renderStudyMode()
           ) : (
              /* View All Mode */
-             <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} /> // Pass star handler
+             <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
           )}
 
         </div>
