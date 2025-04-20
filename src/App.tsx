@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Bird, List, Shuffle, Filter, ArrowLeft } from 'lucide-react';
 // Removed App.css import if Tailwind handles all base styles via index.css or similar
 // import './App.css';
 import { AUDIO_DIR, IMAGE_DIR, MANIFEST_URL, MAPPING_URL } from './config';
@@ -393,14 +393,42 @@ function App() {
   return (
     <div className="bg-bg font-sans text-text min-h-screen flex flex-col">
       <main className="max-w-grid mx-auto w-full grid grid-cols-12 gap-gutter px-gutter flex-grow pb-24">
-        {/* Header */} 
-        <header className="col-span-12 text-center my-12">
-          <h1 className="text-title font-bold tracking-[-0.02em] flex items-center justify-center gap-3">
-            <Bird className="text-primary" size={36} /> Bird Sound Flashcards
-          </h1>
-          <p className="text-subtitle font-medium text-text-muted mt-1">
-            Learn bird calls by ear!
-          </p>
+        {/* Header */}
+        <header className="col-span-12 text-center my-12 flex items-center justify-between">
+           {/* Left Header Button: Conditional Back Arrow or Logo */}
+           <div className="flex-1 flex justify-start"> {/* Container to balance flexbox */}
+              {viewMode === 'viewAll' ? (
+                  <button
+                      onClick={handleToggleView}
+                      className="p-2 text-text-muted hover:text-primary transition-colors" // Simple styling
+                      aria-label="Back to study mode"
+                      title="Back to study mode"
+                  >
+                      <ArrowLeft size={24} />
+                  </button>
+              ) : (
+                  <span className="p-2 text-primary"> {/* Use span or div if no action */} 
+                     <Bird size={24} /> {/* Show logo/bird in study mode */} 
+                  </span>
+              )}
+           </div>
+
+           {/* Center Header Title */}
+           <div className="flex-1 flex justify-center"> 
+              <h1 className="text-title font-bold tracking-[-0.02em] flex items-center justify-center gap-3">
+                {/* <Bird className="text-primary" size={36} /> Re-add icon if desired */}
+                Bird Sound Flashcards
+              </h1>
+              {/* <p className="text-subtitle font-medium text-text-muted mt-1">
+                Learn bird calls by ear!
+              </p> */} 
+            </div>
+
+            {/* Right Header Spacer (to balance flexbox) */}
+            <div className="flex-1 flex justify-end"> 
+              {/* Placeholder for potential future icons like settings */} 
+              <span className="w-8 h-8"></span> {/* Ensure balance */} 
+            </div>
         </header>
 
         {/* Loading and Error States */} 
@@ -426,29 +454,33 @@ function App() {
             ) : (
                /* View All Mode - Span more columns */
                <div className="col-span-12 lg:col-span-10 lg:col-start-2 w-full">
+                  {/* Add Back to Study button HERE */}
+                  <div className="flex justify-center mb-6"> {/* Centering container */} 
+                     <button
+                       onClick={handleToggleView} // Uses the existing toggle handler
+                       className={accentButtonClasses} // Use existing styles
+                       aria-label="Back to study mode"
+                       title="Back to study mode"
+                     >
+                       <ArrowLeft size={18} />
+                       Back to Study
+                     </button>
+                  </div>
+                  {/* Render the AllCardsView component */}
                   <AllCardsView cards={cards} onToggleLearned={handleToggleLearned} onToggleStarred={handleToggleStarred} />
                </div>
             )}
 
-            {/* Bottom Global Controls: Shuffle and View Toggle */}
-            <div className="flex justify-center items-center gap-4 mt-12 w-full max-w-md"> { /* Increased margin-top */}
+            {/* Bottom Global Controls: Now only Shuffle */}
+            <div className="flex justify-center items-center gap-4 mt-12 w-full max-w-md">
               <button
-                  onClick={handleShuffle}
-                  disabled={cards.length <= 1}
-                  className={accentButtonClasses} // Use defined classes
-                  aria-label="Shuffle deck"
-                  title="Shuffle deck (shuffles all cards)"
+                onClick={handleShuffle}
+                disabled={cards.length <= 1}
+                className={accentButtonClasses} // Use defined classes
+                aria-label="Shuffle deck"
+                title="Shuffle deck (shuffles all cards)"
               >
-                  <Shuffle size={18} /> Shuffle All
-              </button>
-              <button
-                  onClick={handleToggleView}
-                  className={accentButtonClasses} // Use defined classes
-                  aria-label={viewMode === 'study' ? "View all cards" : "Switch to study mode"}
-                  title={viewMode === 'study' ? "View all cards" : "Switch to study mode"}
-              >
-                   {viewMode === 'study' ? <List size={18} /> : <Bird size={18} />}
-                   {viewMode === 'study' ? 'View All' : 'Study Mode'}
+                <Shuffle size={18} /> Shuffle All
               </button>
             </div>
           </div>
